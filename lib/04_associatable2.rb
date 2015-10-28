@@ -8,25 +8,31 @@ module Associatable
 
     define_method(name) do
       through_options = self.class.assoc_options[through_name]
+      through_tbl = through_options.table_name
+      through_p_key = through_options.primary_key
+      through_f_key = through_options.foreign_key
+
       source_options = through_options.model_class.assoc_options[source_name]
-      id = send(through_options.foreign_key)
+      source_tbl = source_options.table_name
+      source_p_key = source_options.primary_key
+      source_f_key = source_options.foreign_key
+
+      id = self.send(through_f_key)
       stuff = DBConnection.execute(<<-SQL, id )
         SELECT
-          #{source_options.table_name}.*
+          #{source_tbl}.*
         FROM
-          #{source_options.table_name}
+          #{through_tbl}
         JOIN
-          #{through_options.table_name}
+          #{source_tbl}
         ON
-          #{through_options.table_name}.#{source_options.foreign_key} = #{source_options.table_name}.#{source_options.primary_key}
+          #{through_tbl}.#{source_f_key} = #{source_tbl}.#{source_p_key}
         WHERE
-          #{through_options.table_name}.#{through_options.primary_key} = ?
+          #{through_tbl}.#{through_p_key} = ?
         ;
       SQL
-      p stuff.first
-      source_options.model_class.new(stuff.first)
-    end
 
-    # send(name)
+      source_options.model_class.parse_all(stuff).first
+    end
   end
 end
